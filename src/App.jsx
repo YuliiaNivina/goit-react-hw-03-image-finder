@@ -1,87 +1,86 @@
 import { Component } from 'react';
-import { nanoid } from 'nanoid';
-import ContactList from 'components/ContactList/ContactList';
-import ContactForm from 'components/ContactForm/ContactForm';
-import Filter from 'components/Filter/Filter';
+import axios from 'axios';
+import Searchbar from 'components/Searchbar/Searchbar';
+import ImageGallery from 'components/ImageGallery/ImageGallery';
+import LoadMoreButton from 'components/LoadMoreButton/LoadMoreButton';
+import Loader from 'components/Loader/Loader';
+
 
 class App extends Component {
   state = {
-    contacts: [],
-    filter: '',
+    images: [],
+    page: 1,
+    searchQuery: '',
+    loading: false,
   };
 
-  addContact = ({ name, number }) => {
-    const { contacts } = this.state;
-    const existingContact = contacts.find(
-      contact => contact.name.toLowerCase() === name.toLowerCase()
-    );
+  handleSearch = async searchQuery => {
+    const API_KEY = '34552003-c041c4010936caa6c4fdbe25f';
+    const BASE_URL = `https://pixabay.com/api`;
+    const page = 1;
 
-    if (existingContact) {
-      alert(`${name} is already in contacts.`);
-      return;
+    const url = `${BASE_URL}/?q=${searchQuery}&page=${page}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`;
+
+    try {
+      this.setState({ loading: true });
+
+      const response = await axios.get(url);
+      
+      const images = response.data.hits.map(image => ({
+        id: image.id,
+        webformatURL: image.webformatURL,
+        largeImageURL: image.largeImageURL,
+      }));
+
+      this.setState({
+        images,
+        page,
+        searchQuery,
+        loading: false,
+      });
+    } catch (error) {
+      console.error(error);
     }
-
-    const contact = {
-      id: nanoid(),
-      name: name,
-      number: number,
-    };
-
-    this.setState(({ contacts }) => ({
-      contacts: [contact, ...contacts],
-    }));
   };
 
-  deleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId),
-    }));
-  };
+  loadMore = async () => {
+    this.setState({ loading: true }); 
+    
+    const { searchQuery, page } = this.state;
+    const API_KEY = '34552003-c041c4010936caa6c4fdbe25f';
+    const BASE_URL = `https://pixabay.com/api`;
+    const nextPage = page + 1;
+    const url = `${BASE_URL}/?q=${searchQuery}&page=${nextPage}&key=${API_KEY}&image_type=photo&orientation=horizontal&per_page=12`;
 
-  changeFilter = e => {
-    this.setState({ filter: e.currentTarget.value });
-  };
+    try {
+      const response = await axios.get(url);
 
-  getFiltredContacts = () => {
-    const { filter, contacts } = this.state;
-    const normalizedFilter = filter.toLowerCase();
+      const newImages = response.data.hits.map(image => ({
+        id: image.id,
+        webformatURL: image.webformatURL,
+        largeImageURL: image.largeImageURL,
+      }));
 
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizedFilter)
-    );
-  };
-
-  componentDidMount() {
-    const contacts = localStorage.getItem('contacts list');
-    const parscontacts = JSON.parse(contacts);
-
-    if (parscontacts) {
-      this.setState({ contacts: parscontacts });
+      this.setState(prevState => ({
+        images: [...prevState.images, ...newImages],
+        page: nextPage,
+        loading: false,
+      }));
+    } catch (error) {
+      console.error(error);
     }
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.contacts !== prevState.contacts) {
-      localStorage.setItem(
-        'contacts list',
-        JSON.stringify(this.state.contacts)
-      );
-    }
-  }
+  };
 
   render() {
-    const { filter } = this.state;
-    const filtredContacts = this.getFiltredContacts();
+    const { images, loading } = this.state;
+   
     return (
-      <div>
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.addContact} />
-        <h2>Contacts</h2>
-        <Filter value={filter} onChange={this.changeFilter} />
-        <ContactList
-          contacts={filtredContacts}
-          onDeleteContact={this.deleteContact}
-        />
+      <div className="app">
+        <Searchbar onSubmit={this.handleSearch} />
+        {loading && <Loader />}
+        <ImageGallery images={images} />
+        {images.length > 0 && <LoadMoreButton onClick={this.loadMore} />}
+ 
       </div>
     );
   }
