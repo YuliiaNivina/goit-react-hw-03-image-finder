@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { toast } from 'react-toastify';
 import PropTypes from 'prop-types';
 
 class Searchbar extends Component {
@@ -14,7 +15,9 @@ class Searchbar extends Component {
     evt.preventDefault();
 
     const { searchQuery } = this.state;
-
+    if (searchQuery.trim() === '') {
+      return toast.error('Fill in the search field, please!');
+    }
     this.props.onSubmit(searchQuery);
 
     this.setState({ searchQuery: '' });
